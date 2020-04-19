@@ -38,13 +38,11 @@ namespace WebArchiveExtractor
         /// Reads the main resource and saves it to the given <paramref name="outputFileName"/>
         /// </summary>
         /// <param name="resources"></param>
+        /// <param name="outputFileName">The name for the webpage</param>
         private void ProcessMainResources(IDictionary resources, string outputFileName)
         {
             Uri uri = null;
-            byte[] response;
             byte[] data = null;
-            string mimeType;
-            var encodingName = "UTF-8";
 
             foreach(DictionaryEntry resource in resources)
             {
@@ -57,16 +55,7 @@ namespace WebArchiveExtractor
                     case WebResourceData:
                         data = (byte[]) resource.Value;
                         break;
-
-                    case WebResourceMimeType:
-                        mimeType = (string) resource.Value;
-                        break;
-
-                    case WebResourceTextEncodingName:
-                        encodingName = (string) resource.Value;
-                        break;
                 }
-
             }
 
             if (data != null)
@@ -79,13 +68,11 @@ namespace WebArchiveExtractor
         /// Reads the sub resource and saves it to the given <paramref name="outputFolder"/>
         /// </summary>
         /// <param name="resources"></param>
+        /// <param name="outputFolder"></param>
         private void ProcessSubResources(IDictionary resources, string outputFolder)
         {
             Uri uri = null;
-            byte[] response;
             byte[] data = null;
-            string mimeType;
-            var encodingName = "UTF-8";
 
             foreach(DictionaryEntry resource in resources)
             {
@@ -95,25 +82,10 @@ namespace WebArchiveExtractor
                         uri = new Uri((string) resource.Value);
                         break;
 
-                    case WebResourceResponse:
-                        //response = (byte[]) resource.Value;
-                        //var reader = new BinaryPlistReader();
-                        //var archive = reader.ReadObject(new MemoryStream(response));
-                        break;
-
                     case WebResourceData:
                         data = (byte[]) resource.Value;
                         break;
-
-                    case WebResourceMimeType:
-                        mimeType = (string) resource.Value;
-                        break;
-
-                    case WebResourceTextEncodingName:
-                        encodingName = (string) resource.Value;
-                        break;
                 }
-
             }
 
             if (data != null && 
