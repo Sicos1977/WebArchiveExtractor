@@ -29,7 +29,15 @@ namespace WebArchiveExtractor
         /// <returns></returns>
         public List<string> Extract(string inputFile, string outputFolder)
         {
-            return null;
+            try
+            {
+                //var archive = new PList.BinaryPlistReader("d:\\");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
         #endregion
 
