@@ -33,7 +33,7 @@ namespace WebArchiveExtractor
         }
         #endregion
 
-                #region ProcessMainResources
+        #region ProcessMainResources
         /// <summary>
         /// Reads the main resource and saves it to the given <paramref name="outputFileName"/>
         /// </summary>
