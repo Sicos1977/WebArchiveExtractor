@@ -1,4 +1,5 @@
 ﻿using System;
+using WebArchiveExtractor;
 
 namespace TestTool
 {
@@ -6,7 +7,8 @@ namespace TestTool
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var extractor = new Extractor();
+            extractor.Extract("d:\\test.webarchive", "d:\\test");
         }
     }
 }

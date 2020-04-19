@@ -2,9 +2,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using AngleSharp;
+using AngleSharp.Dom;
+using WebArchiveExtractor.Exceptions;
 
 namespace WebArchiveExtractor
 {
+    /// <summary>
+    /// With this class a Safari webarchive can me extracted to a folder
+    /// </summary>
     public class Extractor
     {
         #region Consts
@@ -31,23 +37,43 @@ namespace WebArchiveExtractor
         {
             try
             {
-                //var archive = new PList.BinaryPlistReader("d:\\");
+                var reader = new PList.BinaryPlistReader();
+                var archive = reader.ReadObject(inputFile);
+
+                if (!archive.Contains(WebMainResource))
+                    throw new WAEResourceMissing($"Can't find the resource '{WebMainResource}' in the webarchive");
+
+                var mainResource = (IDictionary) archive[WebMainResource];
+                var webPageFileName = Path.Combine(outputFolder, "webpage.html");
+
+                ProcessMainResource(mainResource, webPageFileName);
+
+                var webPage = new FileInfo(webPageFileName);
+                var config = Configuration.Default.WithCss();
+                var context = BrowsingContext.New(config);
+
+                using (var document = context.OpenAsync(m => m.Content(webPage.OpenRead())).Result)
+                {
+                    //cument.
+                }
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw;
             }
+
+            return null;
         }
         #endregion
 
-        #region ProcessMainResources
+        #region ProcessMainResource
         /// <summary>
         /// Reads the main resource and saves it to the given <paramref name="outputFileName"/>
         /// </summary>
         /// <param name="resources"></param>
         /// <param name="outputFileName">The name for the webpage</param>
-        private void ProcessMainResources(IDictionary resources, string outputFileName)
+        private void ProcessMainResource(IDictionary resources, string outputFileName)
         {
             Uri uri = null;
             byte[] data = null;
