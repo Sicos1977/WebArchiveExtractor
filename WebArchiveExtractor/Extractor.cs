@@ -2,9 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using AngleSharp;
-using AngleSharp.Dom;
+using System.Text;
 using WebArchiveExtractor.Exceptions;
+using WebArchiveExtractor.Helpers;
 
 namespace WebArchiveExtractor
 {
@@ -30,36 +30,52 @@ namespace WebArchiveExtractor
         /// <summary>
         /// Extract the given <paramref name="inputFile"/> to the given <paramref name="outputFolder"/>
         /// </summary>
-        /// <param name="inputFile"></param>
-        /// <param name="outputFolder"></param>
+        /// <param name="inputFile">The input file</param>
+        /// <param name="outputFolder">The folder where to save the extracted web archive</param>
+        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <returns></returns>
-        public List<string> Extract(string inputFile, string outputFolder)
+        /// <exception cref="WAEResourceMissing">Raised when a required resource is not found in the web archive</exception>
+        public List<string> Extract(string inputFile, string outputFolder, Stream logStream = null)
         {
+            if (logStream != null)
+                Logger.LogStream = logStream;
+
             try
             {
                 var reader = new PList.BinaryPlistReader();
                 var archive = reader.ReadObject(inputFile);
 
                 if (!archive.Contains(WebMainResource))
-                    throw new WAEResourceMissing($"Can't find the resource '{WebMainResource}' in the webarchive");
+                {
+                    var message = $"Can't find the resource '{WebMainResource}' in the webarchive";
+                    Logger.WriteToLog(message);
+                    throw new WAEResourceMissing(message);
+                }
 
                 var mainResource = (IDictionary) archive[WebMainResource];
                 var webPageFileName = Path.Combine(outputFolder, "webpage.html");
+                //Logger.WriteToLog($"Reading main web page from '{WebMainResource}' and writing it to '{webPageFileName}'");
 
-                ProcessMainResource(mainResource, webPageFileName);
+                var webPage = ProcessMainResource(mainResource, out var mainUri);
+                File.WriteAllText("d:\\input.html", webPage);
 
-                var webPage = new FileInfo(webPageFileName);
-                var config = Configuration.Default.WithCss();
-                var context = BrowsingContext.New(config);
-
-                using (var document = context.OpenAsync(m => m.Content(webPage.OpenRead())).Result)
+                if (!archive.Contains(WebSubresources))
+                    Logger.WriteToLog("Web archive does not contain any sub resources");
+                else
                 {
-                    //cument.
+                    var subResources = (object[]) archive[WebSubresources];
+                    var count = subResources.Length;
+                    Logger.WriteToLog($"Web archive has {count} sub resource{(count > 1 ? "s" : string.Empty)}");
+
+                    foreach(IDictionary subResource in subResources)
+                        ProcessSubResources(subResource, outputFolder, mainUri, ref webPage);
                 }
+
+                File.WriteAllText("d:\\output.html", webPage);
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                Console.WriteLine(e);
+                Logger.WriteToLog(ExceptionHelpers.GetInnerException(exception));
                 throw;
             }
 
@@ -68,42 +84,57 @@ namespace WebArchiveExtractor
         #endregion
 
         #region ProcessMainResource
+
         /// <summary>
-        /// Reads the main resource and saves it to the given <paramref name="outputFileName"/>
+        /// Reads the main resource and returns it as a string
         /// </summary>
         /// <param name="resources"></param>
-        /// <param name="outputFileName">The name for the webpage</param>
-        private void ProcessMainResource(IDictionary resources, string outputFileName)
+        /// <param name="mainUri"></param>
+        private string ProcessMainResource(IDictionary resources, out Uri mainUri)
         {
-            Uri uri = null;
             byte[] data = null;
+            var textEncoding = "UTF-8";
+            mainUri = null;
 
             foreach(DictionaryEntry resource in resources)
             {
                 switch (resource.Key)
                 {
-                    case WebMainResource:
-                        uri = new Uri((string) resource.Value);
+                    case WebResourceUrl:
+                        mainUri = new Uri((string)resource.Value);
+                        Logger.WriteToLog($"The webpage has been saved from the url '{mainUri.Host}'");
                         break;
 
                     case WebResourceData:
                         data = (byte[]) resource.Value;
                         break;
+
+                    case WebResourceTextEncodingName:
+                        textEncoding = (string) resource.Value;
+                        break;
                 }
             }
 
-            if (data != null)
-                File.WriteAllBytes(outputFileName, data);
+            var encoding = Encoding.GetEncoding(textEncoding);
+
+            return data == null ? string.Empty : encoding.GetString(data);
         }
         #endregion
 
         #region ProcessSubResources
+
         /// <summary>
         /// Reads the sub resource and saves it to the given <paramref name="outputFolder"/>
         /// </summary>
-        /// <param name="resources"></param>
-        /// <param name="outputFolder"></param>
-        private void ProcessSubResources(IDictionary resources, string outputFolder)
+        /// <param name="resources">The sub resource</param>
+        /// <param name="outputFolder">The output folder where to save the resource</param>
+        /// <param name="mainUri">The main uri of the web page</param>
+        /// <param name="webPage">The main web page</param>
+        private void ProcessSubResources(
+            IDictionary resources, 
+            string outputFolder, 
+            Uri mainUri,
+            ref string webPage)
         {
             Uri uri = null;
             byte[] data = null;
@@ -122,8 +153,7 @@ namespace WebArchiveExtractor
                 }
             }
 
-            if (data != null && 
-                uri != null && uri.LocalPath.StartsWith("/"))
+            if (data != null && uri != null && uri.LocalPath.StartsWith("/"))
             {
                 var fileInfo = new FileInfo(Path.Combine(outputFolder, uri.LocalPath.TrimStart('/')));
 
@@ -131,6 +161,31 @@ namespace WebArchiveExtractor
                 {
                     fileInfo.Directory?.Create();
                     File.WriteAllBytes(fileInfo.FullName, data);
+
+                    var webArchiveUri = uri.ToString();
+                    var webArchiveUriWithoutScheme = webArchiveUri.Replace($"{uri.Scheme}:", string.Empty);
+                    var fileUri = new Uri(fileInfo.FullName).ToString();
+
+
+                    if (webPage.Contains(webArchiveUri))
+                    {
+                        Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{fileUri}'");
+                        webPage = webPage.Replace(webArchiveUri, fileUri);
+                    }
+                    else if (webPage.Contains(webArchiveUriWithoutScheme))
+                    {
+                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{fileUri}'");
+                        webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{fileUri}");
+                    }
+                    else if (webArchiveUri.Contains(mainUri.Host) && webPage.Contains(uri.PathAndQuery))
+                    {
+                        Logger.WriteToLog($"Replacing '{uri.PathAndQuery}' with '{fileUri}'");
+                        webPage = webPage.Replace(uri.PathAndQuery, $"{fileUri}");
+                    }
+                    else
+                    {
+                        Logger.WriteToLog($"Could not find any resources with url '{uri}' in the web page");
+                    }
                 }
             }
         }

@@ -8,7 +8,11 @@ namespace TestTool
         static void Main(string[] args)
         {
             var extractor = new Extractor();
-            extractor.Extract("d:\\test.webarchive", "d:\\test");
+
+            using (var stream = Console.OpenStandardOutput())
+            {
+                extractor.Extract("d:\\test.webarchive", "d:\\test", stream);
+            }
         }
     }
 }
