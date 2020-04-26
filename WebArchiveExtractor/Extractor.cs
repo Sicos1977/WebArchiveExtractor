@@ -57,7 +57,7 @@ namespace WebArchiveExtractor
                 //Logger.WriteToLog($"Reading main web page from '{WebMainResource}' and writing it to '{webPageFileName}'");
 
                 var webPage = ProcessMainResource(mainResource, out var mainUri);
-                File.WriteAllText("d:\\input.html", webPage);
+                File.WriteAllText(webPageFileName, webPage);
 
                 if (!archive.Contains(WebSubresources))
                     Logger.WriteToLog("Web archive does not contain any sub resources");
@@ -71,7 +71,42 @@ namespace WebArchiveExtractor
                         ProcessSubResources(subResource, outputFolder, mainUri, ref webPage);
                 }
 
-                File.WriteAllText("d:\\output.html", webPage);
+                if (!archive.Contains(WebSubframeArchives))
+                    Logger.WriteToLog("Web archive does not contain any sub frame archives");
+                else
+                {
+                    var subFrameResources = (object[])archive[WebSubframeArchives];
+                    var count = subFrameResources.Length;
+                    Logger.WriteToLog($"Web archive has {count} sub frame resource{(count > 1 ? "s" : string.Empty)}");
+
+                    var i = 1;
+
+                    foreach (IDictionary subFrameResource in subFrameResources)
+                    {
+                        var subFrameMainResource = (IDictionary) subFrameResource[WebMainResource];
+                        var subFrameResourWebPage = ProcessSubFrameMainResource(subFrameMainResource, out var frameName, out var subFrameMainUri);
+
+                        var subFrameOutputFolder = Path.Combine(outputFolder, $"subframe_{i}");
+                        Directory.CreateDirectory(subFrameOutputFolder);
+                        i += 1;
+
+                        var subFrameSubResources = (object[]) subFrameResource[WebSubresources];
+
+                        if (subFrameSubResources != null)
+                            foreach(IDictionary subFrameSubResource in subFrameSubResources)
+                                ProcessSubResources(subFrameSubResource, subFrameOutputFolder, subFrameMainUri, ref subFrameResourWebPage);
+
+                        // TODO: Verder uitprogrammeren
+                        var subFrameWebPageFileName = Path.Combine(subFrameOutputFolder, "webpage.html");
+
+                        webPage = webPage.Replace(subFrameMainUri.ToString(), subFrameWebPageFileName);
+
+                        File.WriteAllText(subFrameWebPageFileName, subFrameResourWebPage);
+                    }
+                }
+
+                File.WriteAllText(webPageFileName, webPage);
+
             }
             catch (Exception exception)
             {
@@ -84,7 +119,6 @@ namespace WebArchiveExtractor
         #endregion
 
         #region ProcessMainResource
-
         /// <summary>
         /// Reads the main resource and returns it as a string
         /// </summary>
@@ -122,7 +156,6 @@ namespace WebArchiveExtractor
         #endregion
 
         #region ProcessSubResources
-
         /// <summary>
         /// Reads the sub resource and saves it to the given <paramref name="outputFolder"/>
         /// </summary>
@@ -155,7 +188,13 @@ namespace WebArchiveExtractor
 
             if (data != null && uri != null && uri.LocalPath.StartsWith("/"))
             {
-                var fileInfo = new FileInfo(Path.Combine(outputFolder, uri.LocalPath.TrimStart('/')));
+                var path = Path.Combine(outputFolder, uri.LocalPath.Replace(mainUri.AbsolutePath, string.Empty).TrimStart('/'));
+                var fileInfo = new FileInfo(path);
+
+                if (fileInfo.Exists || File.Exists(fileInfo.DirectoryName) || Directory.Exists(fileInfo.FullName))
+                    path = Path.Combine(outputFolder, Guid.NewGuid().ToString());
+
+                fileInfo = new FileInfo(path);
 
                 if (!fileInfo.FullName.EndsWith(@"\"))
                 {
@@ -164,9 +203,9 @@ namespace WebArchiveExtractor
 
                     var webArchiveUri = uri.ToString();
                     var webArchiveUriWithoutScheme = webArchiveUri.Replace($"{uri.Scheme}:", string.Empty);
+                    var webArchiveUriWithoutMainUri = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}{mainUri.AbsolutePath}", string.Empty);
                     var fileUri = new Uri(fileInfo.FullName).ToString();
-
-
+                    
                     if (webPage.Contains(webArchiveUri))
                     {
                         Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{fileUri}'");
@@ -176,6 +215,11 @@ namespace WebArchiveExtractor
                     {
                         Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{fileUri}'");
                         webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{fileUri}");
+                    }
+                    else if (webPage.Contains(webArchiveUriWithoutMainUri))
+                    {
+                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUri}' with '{fileUri}'");
+                        webPage = webPage.Replace(webArchiveUriWithoutMainUri, $"{fileUri}");
                     }
                     else if (webArchiveUri.Contains(mainUri.Host) && webPage.Contains(uri.PathAndQuery))
                     {
@@ -188,6 +232,49 @@ namespace WebArchiveExtractor
                     }
                 }
             }
+        }
+        #endregion
+
+        #region ProcessSubFrameMainResource
+        /// <summary>
+        /// Reads the main resource and returns it as a string
+        /// </summary>
+        /// <param name="resources"></param>
+        /// <param name="frameName"></param>
+        /// <param name="mainUri"></param>
+        private string ProcessSubFrameMainResource(IDictionary resources, out string frameName, out Uri mainUri)
+        {
+            byte[] data = null;
+            var textEncoding = "UTF-8";
+            mainUri = null;
+            frameName = string.Empty;
+
+            foreach (DictionaryEntry resource in resources)
+            {
+                switch (resource.Key)
+                {
+                    case WebResourceUrl:
+                        mainUri = new Uri((string)resource.Value);
+                        Logger.WriteToLog($"The webpage has been saved from the url '{mainUri.Host}'");
+                        break;
+
+                    case WebResourceData:
+                        data = (byte[])resource.Value;
+                        break;
+
+                    case WebResourceTextEncodingName:
+                        textEncoding = (string)resource.Value;
+                        break;
+
+                    case WebResourceFrameName:
+                        frameName = (string)resource.Value;
+                        break;
+                }
+            }
+
+            var encoding = Encoding.GetEncoding(textEncoding);
+
+            return data == null ? string.Empty : encoding.GetString(data);
         }
         #endregion
     }
