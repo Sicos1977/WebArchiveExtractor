@@ -45,7 +45,7 @@ In Visual Studio's Package Manager Console, simply enter the following command:
 ```csharp
 using (var extractor = new WebArchiveExtractor())
 {
-    extractor.Extract(<inputfile>, "<the path where to save the content of the webarchive>", <extraction option>);
+    extractor.Extract("<inputfile>", "<the path where to save the content of the webarchive>", <extraction option>);
 }
 ```
 
