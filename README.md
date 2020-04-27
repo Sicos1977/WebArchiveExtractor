@@ -8,7 +8,7 @@ I needed a tool to save the content of a webarchive to disk so that I could conv
 
 ## Keep in mind
 
-This is a tool to extract the content of an Safari web archive, it is no guarantee that the web page is viewable. Most web pages work fine but complex pages with a lott of javascript will sometimes not work because this tool is not Safari itself.
+This is a tool to extract the content of an Safari web archive, it is no guarantee that the web page is viewable. Most web pages work fine but complex pages with a lott of javascript will sometimes not work because they are looking for resources that can't be found in the folder where you extracted the web archive. If a page uses a lott of javascript then try to use the option ```IgnoreJavaScriptFiles```
 
 ## License Information
 
