@@ -4,7 +4,7 @@ WebArchiveExtractor is a 100% managed C# .NETStandard 2.0 library and .NET Core 
 
 ## Why did I make this?
 
-I needed a tool to save the content of a webarchive to disk so that I could convert it to PDF with my other project [ChromeHtmlToPdf](https://github.com/Sicos1977/ChromeHtmlToPdf)
+I needed a tool to save the content of a web archive to disk so that I could convert it to PDF with my other project [ChromeHtmlToPdf](https://github.com/Sicos1977/ChromeHtmlToPdf)
 
 ## Keep in mind
 
