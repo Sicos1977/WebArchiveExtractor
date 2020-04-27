@@ -34,14 +34,14 @@ The easiest way to install WebArchiveReader is via NuGet.
 
 In Visual Studio's Package Manager Console, simply enter the following command:
 
-    Install-Package WebArchiveReader 
+    Install-Package WebArchiveExtractor 
 
 ### Extracting a webarchive
 
 ```csharp
 using (var extractor = new WebArchiveExtractor())
 {
-    extractor.Extract("<the path where to save the content of the webarchive>");
+    extractor.Extract(<inputfile>, "<the path where to save the content of the webarchive>", <extraction option>);
 }
 ```
 
