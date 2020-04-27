@@ -2,11 +2,30 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Kees van Spelde</Authors>
+    <Company>Magic-Sessions</Company>
+    <Description>An assembly that can be used to extract the content of an Safari web archive file</Description>
+    <Copyright>(C) 2020 Magic-Sessions</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Sicos1977/WebArchiveExtractor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Sicos1977/WebArchiveExtractor</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageTags>webarchive safari mac</PackageTags>
+    <PackageReleaseNotes>- First version</PackageReleaseNotes>
+    <PackageIcon>safari-icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Helpers\" />
     <Folder Include="PList\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="safari-icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

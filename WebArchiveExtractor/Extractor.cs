@@ -28,7 +28,7 @@ namespace WebArchiveExtractor
         // ReSharper restore UnusedMember.Local
         #endregion
 
-        #region public enum ExtractorOptions
+        #region Public enum ExtractorOptions
         /// <summary>
         /// Options that can be used when extracting the web archive
         /// </summary>
@@ -55,17 +55,34 @@ namespace WebArchiveExtractor
         /// <param name="options"><see cref="ExtractorOptions"/></param>
         /// <param name="logStream">When set then logging is written to this stream</param>
         /// <returns></returns>
+        /// <exception cref="WAEInvalidFile">Raised when a required resource is not found in the web archive</exception>
         /// <exception cref="WAEResourceMissing">Raised when a required resource is not found in the web archive</exception>
-        public List<string> Extract(string inputFile, string outputFolder, ExtractorOptions options,  Stream logStream = null)
+        /// <exception cref="FileNotFoundException">Raised when the <paramref name="inputFile"/> is not found</exception>
+        /// <exception cref="DirectoryNotFoundException">Raised when the <paramref name="outputFolder"/> does not exist</exception>
+        public List<string> Extract(string inputFile, string outputFolder, ExtractorOptions options = ExtractorOptions.None,  Stream logStream = null)
         {
             if (logStream != null)
                 Logger.LogStream = logStream;
 
             try
             {
-                var reader = new PList.BinaryPlistReader();
-                var archive = reader.ReadObject(inputFile);
+                if (!Directory.Exists(outputFolder))
+                    throw new DirectoryNotFoundException($"The output folder '{outputFolder}' does not exist");
 
+
+                var reader = new PList.BinaryPlistReader();
+
+                IDictionary archive;
+
+                try
+                {
+                    archive = reader.ReadObject(inputFile);
+                }
+                catch (Exception exception)
+                {
+                    throw new WAEInvalidFile($"The file '{inputFile}' is not a valid Safari web archive", exception);
+                }
+                
                 if (!archive.Contains(WebMainResource))
                 {
                     var message = $"Can't find the resource '{WebMainResource}' in the webarchive";
