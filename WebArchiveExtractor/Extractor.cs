@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Web;
@@ -59,7 +58,7 @@ namespace WebArchiveExtractor
         /// <exception cref="WAEResourceMissing">Raised when a required resource is not found in the web archive</exception>
         /// <exception cref="FileNotFoundException">Raised when the <paramref name="inputFile"/> is not found</exception>
         /// <exception cref="DirectoryNotFoundException">Raised when the <paramref name="outputFolder"/> does not exist</exception>
-        public List<string> Extract(string inputFile, string outputFolder, ExtractorOptions options = ExtractorOptions.None,  Stream logStream = null)
+        public string Extract(string inputFile, string outputFolder, ExtractorOptions options = ExtractorOptions.None,  Stream logStream = null)
         {
             if (logStream != null)
                 Logger.LogStream = logStream;
@@ -68,8 +67,7 @@ namespace WebArchiveExtractor
             {
                 if (!Directory.Exists(outputFolder))
                     throw new DirectoryNotFoundException($"The output folder '{outputFolder}' does not exist");
-
-
+                
                 var reader = new PList.BinaryPlistReader();
 
                 IDictionary archive;
@@ -182,14 +180,13 @@ namespace WebArchiveExtractor
                 }
 
                 File.WriteAllText(webPageFileName, webPage);
+                return webPageFileName;
             }
             catch (Exception exception)
             {
                 Logger.WriteToLog(ExceptionHelpers.GetInnerException(exception));
                 throw;
             }
-
-            return null;
         }
         #endregion
 
