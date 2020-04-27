@@ -115,25 +115,25 @@ namespace WebArchiveExtractor
                         }
 
                         var subFrameWebPageFileName = Path.Combine(subFrameOutputFolder, "webpage.html");
-
+                        var subFrameWebPageRelativeUri = $"subframe_{i}/webpage.html";
                         var subFrameUri = subFrameMainUri.ToString();
                         var subFrameUriWithoutScheme = subFrameUri.Replace($"{subFrameMainUri.Scheme}:", string.Empty);
                         var subFrameUriWithoutMainUri = subFrameUri.Replace($"{mainUri.Scheme}://{mainUri.Host}{mainUri.AbsolutePath}", string.Empty);
 
                         if (webPage.Contains(subFrameUri))
                         {
-                            Logger.WriteToLog($"Replacing '{subFrameUri}' with '{subFrameWebPageFileName}'");
-                            webPage = webPage.Replace(subFrameUri, subFrameWebPageFileName);
+                            Logger.WriteToLog($"Replacing '{subFrameUri}' with '{subFrameWebPageRelativeUri}'");
+                            webPage = webPage.Replace(subFrameUri, subFrameWebPageRelativeUri);
                         }
                         else if (webPage.Contains(subFrameUriWithoutScheme))
                         {
-                            Logger.WriteToLog($"Replacing '{subFrameUriWithoutScheme}' with '{subFrameWebPageFileName}'");
-                            webPage = webPage.Replace(subFrameUriWithoutScheme, $"{subFrameWebPageFileName}");
+                            Logger.WriteToLog($"Replacing '{subFrameUriWithoutScheme}' with '{subFrameWebPageRelativeUri}'");
+                            webPage = webPage.Replace(subFrameUriWithoutScheme, $"{subFrameWebPageRelativeUri}");
                         }
                         else if (webPage.Contains(subFrameUriWithoutMainUri))
                         {
-                            Logger.WriteToLog($"Replacing '{subFrameUriWithoutMainUri}' with '{subFrameWebPageFileName}'");
-                            webPage = webPage.Replace(subFrameUriWithoutMainUri, $"{subFrameWebPageFileName}");
+                            Logger.WriteToLog($"Replacing '{subFrameUriWithoutMainUri}' with '{subFrameWebPageRelativeUri}'");
+                            webPage = webPage.Replace(subFrameUriWithoutMainUri, $"{subFrameWebPageRelativeUri}");
                         }
                         else
                         {
@@ -227,7 +227,8 @@ namespace WebArchiveExtractor
 
             if (data != null && uri != null && uri.LocalPath.StartsWith("/"))
             {
-                var path = Path.Combine(outputFolder, uri.LocalPath.Replace(mainUri.AbsolutePath, string.Empty).TrimStart('/'));
+                var fileRelativeUri = uri.LocalPath.Replace(mainUri.AbsolutePath, string.Empty).TrimStart('/');
+                var path = Path.Combine(outputFolder, fileRelativeUri);
                 var fileInfo = new FileInfo(path);
 
                 if (fileInfo.Exists || File.Exists(fileInfo.DirectoryName) || Directory.Exists(fileInfo.FullName))
@@ -244,38 +245,41 @@ namespace WebArchiveExtractor
                     var webArchiveUriWithoutScheme = webArchiveUri.Replace($"{uri.Scheme}:", string.Empty);
                     var webArchiveUriWithoutMainUriHost = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}", string.Empty);
                     var webArchiveUriWithoutMainUriHostAbsolutePath = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}{mainUri.AbsolutePath}", string.Empty);
-                    var fileUri = new Uri(fileInfo.FullName).ToString();
                     
                     if (webPage.Contains(webArchiveUri))
                     {
-                        Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{fileUri}'");
-                        webPage = webPage.Replace(webArchiveUri, fileUri);
+                        Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{fileRelativeUri}'");
+                        webPage = webPage.Replace(webArchiveUri, fileRelativeUri);
                     }
                     else if (webPage.Contains(webArchiveUriWithoutScheme))
                     {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{fileUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{fileUri}");
+                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{fileRelativeUri}'");
+                        webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{fileRelativeUri}");
                     }
                     else if (webPage.Contains(webArchiveUriWithoutMainUriHost))
                     {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHost}' with '{fileUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHost, $"{fileUri}");
+                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHost}' with '{fileRelativeUri}'");
+                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHost, $"{fileRelativeUri}");
                     }
                     else if (webPage.Contains(webArchiveUriWithoutMainUriHostAbsolutePath))
                     {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHostAbsolutePath}' with '{fileUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHostAbsolutePath, $"{fileUri}");
+                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHostAbsolutePath}' with '{fileRelativeUri}'");
+                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHostAbsolutePath, $"{fileRelativeUri}");
                     }
                     else if (webArchiveUri.Contains(mainUri.Host) && webPage.Contains(uri.PathAndQuery))
                     {
-                        Logger.WriteToLog($"Replacing '{uri.PathAndQuery}' with '{fileUri}'");
-                        webPage = webPage.Replace(uri.PathAndQuery, $"{fileUri}");
+                        Logger.WriteToLog($"Replacing '{uri.PathAndQuery}' with '{fileRelativeUri}'");
+                        webPage = webPage.Replace(uri.PathAndQuery, $"{fileRelativeUri}");
                     }
                     else
                     {
                         Logger.WriteToLog($"Could not find any resources with url '{uri}' in the web page");
                     }
                 }
+            }
+            else
+            {
+                Logger.WriteToLog($"Ignoring url '{uri}'");
             }
         }
         #endregion

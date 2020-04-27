@@ -11,7 +11,7 @@ namespace TestTool
 
             using (var stream = Console.OpenStandardOutput())
             {
-                extractor.Extract("d:\\test.webarchive", "d:\\test", stream);
+                extractor.Extract("d:\\test5.webarchive", "d:\\test", stream);
             }
         }
     }
