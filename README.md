@@ -6,6 +6,10 @@ WebArchiveExtractor is a 100% managed C# .NETStandard 2.0 library and .NET Core 
 
 I needed a tool to save the content of a webarchive to disk so that I could convert it to PDF with my other project [ChromeHtmlToPdf](https://github.com/Sicos1977/ChromeHtmlToPdf)
 
+## Keep in mind
+
+This is a tool to extract the content of an Safari web archive, it is no guarantee that the web page is viewable. Most web pages work fine but complex pages with a lott of javascript will sometimes not work because this tool is not Safari itself.
+
 ## License Information
 
 WebArchiveReader is Copyright (C)2020 Kees van Spelde and is licensed under the MIT license:
