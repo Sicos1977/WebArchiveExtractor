@@ -28,16 +28,35 @@ namespace WebArchiveExtractor
         // ReSharper restore UnusedMember.Local
         #endregion
 
+        #region public enum ExtractorOptions
+        /// <summary>
+        /// Options that can be used when extracting the web archive
+        /// </summary>
+        public enum ExtractorOptions
+        {
+            /// <summary>
+            /// Nothing
+            /// </summary>
+            None,
+
+            /// <summary>
+            /// When used then all the found JavaScript files are ignored and disabled in the extracted web page
+            /// </summary>
+            IgnoreJavaScriptFiles
+        }
+        #endregion
+
         #region Extract
         /// <summary>
         /// Extract the given <paramref name="inputFile"/> to the given <paramref name="outputFolder"/>
         /// </summary>
         /// <param name="inputFile">The input file</param>
         /// <param name="outputFolder">The folder where to save the extracted web archive</param>
+        /// <param name="options"><see cref="ExtractorOptions"/></param>
         /// <param name="logStream">When set then logging is written to this stream</param>
         /// <returns></returns>
         /// <exception cref="WAEResourceMissing">Raised when a required resource is not found in the web archive</exception>
-        public List<string> Extract(string inputFile, string outputFolder, Stream logStream = null)
+        public List<string> Extract(string inputFile, string outputFolder, ExtractorOptions options,  Stream logStream = null)
         {
             if (logStream != null)
                 Logger.LogStream = logStream;
@@ -60,8 +79,9 @@ namespace WebArchiveExtractor
                 Logger.WriteToLog($"Getting main web page from '{WebMainResource}'");
                 var webPage = ProcessMainResource(mainResource, out var mainUri);
 
-                // TODO: Remove before release
+#if (DEBUG)
                 File.WriteAllText(webPageFileName, webPage);
+#endif
 
                 if (!archive.Contains(WebSubresources))
                     Logger.WriteToLog("Web archive does not contain any sub resources");
@@ -72,7 +92,7 @@ namespace WebArchiveExtractor
                     Logger.WriteToLog($"Web archive has {count} sub resource{(count > 1 ? "s" : string.Empty)}");
 
                     foreach(IDictionary subResource in subResources)
-                        ProcessSubResources(subResource, outputFolder, mainUri, ref webPage);
+                        ProcessSubResources(subResource, outputFolder, mainUri, options, ref webPage);
                 }
 
                 if (!archive.Contains(WebSubframeArchives))
@@ -110,7 +130,7 @@ namespace WebArchiveExtractor
                             Logger.WriteToLog($"Web archive sub frame has {subFrameSubResourcesCount} sub resource{(subFrameSubResourcesCount > 1 ? "s" : string.Empty)}");
 
                             foreach (IDictionary subFrameSubResource in subFrameSubResources)
-                                ProcessSubResources(subFrameSubResource, subFrameOutputFolder, subFrameMainUri,
+                                ProcessSubResources(subFrameSubResource, subFrameOutputFolder, subFrameMainUri, options,
                                     ref subFrameResourceWebPage);
                         }
 
@@ -145,7 +165,6 @@ namespace WebArchiveExtractor
                 }
 
                 File.WriteAllText(webPageFileName, webPage);
-
             }
             catch (Exception exception)
             {
@@ -201,16 +220,19 @@ namespace WebArchiveExtractor
         /// <param name="resources">The sub resource</param>
         /// <param name="outputFolder">The output folder where to save the resource</param>
         /// <param name="mainUri">The main uri of the web page</param>
+        /// <param name="options"><see cref="ExtractorOptions"/></param>
         /// <param name="webPage">The main web page</param>
         private void ProcessSubResources(
             IDictionary resources, 
             string outputFolder, 
             Uri mainUri,
+            ExtractorOptions options,
             ref string webPage)
         {
             Uri uri = null;
             byte[] data = null;
-
+            string mimeType = null;
+            
             foreach(DictionaryEntry resource in resources)
             {
                 switch (resource.Key)
@@ -222,9 +244,21 @@ namespace WebArchiveExtractor
                     case WebResourceData:
                         data = (byte[]) resource.Value;
                         break;
+
+                    case WebResourceMimeType:
+                        mimeType = (string) resource.Value;
+                        break;
                 }
             }
 
+            if ((mimeType == "text/javascript" || mimeType == "application/javascript" ||
+                 mimeType == "application/x-javascript") && options == ExtractorOptions.IgnoreJavaScriptFiles)
+            {
+                Logger.WriteToLog("Ignoring javascript file, replacing it with a empty string in the web page");
+                ReplaceWebPageUrl(uri, mainUri, string.Empty, ref webPage);
+                return;
+            }
+            
             if (data != null && uri != null && uri.LocalPath.StartsWith("/"))
             {
                 var fileRelativeUri = uri.LocalPath.Replace(mainUri.AbsolutePath, string.Empty).TrimStart('/');
@@ -240,46 +274,59 @@ namespace WebArchiveExtractor
                 {
                     fileInfo.Directory?.Create();
                     File.WriteAllBytes(fileInfo.FullName, data);
-
-                    var webArchiveUri = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}{HttpUtility.HtmlEncode(uri.Query)}";
-                    var webArchiveUriWithoutScheme = webArchiveUri.Replace($"{uri.Scheme}:", string.Empty);
-                    var webArchiveUriWithoutMainUriHost = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}", string.Empty);
-                    var webArchiveUriWithoutMainUriHostAbsolutePath = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}{mainUri.AbsolutePath}", string.Empty);
-                    
-                    if (webPage.Contains(webArchiveUri))
-                    {
-                        Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{fileRelativeUri}'");
-                        webPage = webPage.Replace(webArchiveUri, fileRelativeUri);
-                    }
-                    else if (webPage.Contains(webArchiveUriWithoutScheme))
-                    {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{fileRelativeUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{fileRelativeUri}");
-                    }
-                    else if (webPage.Contains(webArchiveUriWithoutMainUriHost))
-                    {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHost}' with '{fileRelativeUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHost, $"{fileRelativeUri}");
-                    }
-                    else if (webPage.Contains(webArchiveUriWithoutMainUriHostAbsolutePath))
-                    {
-                        Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHostAbsolutePath}' with '{fileRelativeUri}'");
-                        webPage = webPage.Replace(webArchiveUriWithoutMainUriHostAbsolutePath, $"{fileRelativeUri}");
-                    }
-                    else if (webArchiveUri.Contains(mainUri.Host) && webPage.Contains(uri.PathAndQuery))
-                    {
-                        Logger.WriteToLog($"Replacing '{uri.PathAndQuery}' with '{fileRelativeUri}'");
-                        webPage = webPage.Replace(uri.PathAndQuery, $"{fileRelativeUri}");
-                    }
-                    else
-                    {
-                        Logger.WriteToLog($"Could not find any resources with url '{uri}' in the web page");
-                    }
+                    ReplaceWebPageUrl(uri, mainUri, fileRelativeUri, ref webPage);
                 }
+                else
+                {
+                    Logger.WriteToLog($"Ignoring url '{uri}'");
+                }
+            }
+        }
+        #endregion
+
+        #region ReplaceWebPageUrl
+        /// <summary>
+        /// Replaces the <paramref name="uri"/> in the referenced <paramref name="webPage"/> with a <paramref name="newUrl"/>
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="mainUri"></param>
+        /// <param name="newUrl"></param>
+        /// <param name="webPage"></param>
+        private void ReplaceWebPageUrl(Uri uri, Uri mainUri, string newUrl, ref string webPage)
+        {
+            var webArchiveUri = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}{HttpUtility.HtmlEncode(uri.Query)}";
+            var webArchiveUriWithoutScheme = webArchiveUri.Replace($"{uri.Scheme}:", string.Empty);
+            var webArchiveUriWithoutMainUriHost = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}", string.Empty);
+            var webArchiveUriWithoutMainUriHostAbsolutePath = webArchiveUri.Replace($"{mainUri.Scheme}://{mainUri.Host}{mainUri.AbsolutePath}", string.Empty);
+
+            if (webPage.Contains(webArchiveUri))
+            {
+                Logger.WriteToLog($"Replacing '{webArchiveUri}' with '{newUrl}'");
+                webPage = webPage.Replace(webArchiveUri, newUrl);
+            }
+            else if (webPage.Contains(webArchiveUriWithoutScheme))
+            {
+                Logger.WriteToLog($"Replacing '{webArchiveUriWithoutScheme}' with '{newUrl}'");
+                webPage = webPage.Replace(webArchiveUriWithoutScheme, $"{newUrl}");
+            }
+            else if (webPage.Contains(webArchiveUriWithoutMainUriHost))
+            {
+                Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHost}' with '{newUrl}'");
+                webPage = webPage.Replace(webArchiveUriWithoutMainUriHost, $"{newUrl}");
+            }
+            else if (webPage.Contains(webArchiveUriWithoutMainUriHostAbsolutePath))
+            {
+                Logger.WriteToLog($"Replacing '{webArchiveUriWithoutMainUriHostAbsolutePath}' with '{newUrl}'");
+                webPage = webPage.Replace(webArchiveUriWithoutMainUriHostAbsolutePath, $"{newUrl}");
+            }
+            else if (webArchiveUri.Contains(mainUri.Host) && webPage.Contains(uri.PathAndQuery))
+            {
+                Logger.WriteToLog($"Replacing '{uri.PathAndQuery}' with '{newUrl}'");
+                webPage = webPage.Replace(uri.PathAndQuery, $"{newUrl}");
             }
             else
             {
-                Logger.WriteToLog($"Ignoring url '{uri}'");
+                Logger.WriteToLog($"Could not find any resources with url '{uri}' in the web page");
             }
         }
         #endregion
@@ -288,9 +335,9 @@ namespace WebArchiveExtractor
         /// <summary>
         /// Reads the main resource and returns it as a string
         /// </summary>
-        /// <param name="resources"></param>
-        /// <param name="frameName"></param>
-        /// <param name="mainUri"></param>
+        /// <param name="resources">The resource</param>
+        /// <param name="frameName">The name of the frame</param>
+        /// <param name="mainUri">The main url of the web page</param>
         private string ProcessSubFrameMainResource(IDictionary resources, out string frameName, out Uri mainUri)
         {
             byte[] data = null;
