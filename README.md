@@ -1,5 +1,3 @@
-## WORK IN PROGRESS.. THIS IS NON WORKING CODE !!
-
 ## What is WebArchiveExtractor?
 
 WebArchiveExtractor is a 100% managed C# .NETStandard 2.0 library and .NET Core 3.0 console application that can be used to read Safari webarchives and extract its content to a folder
