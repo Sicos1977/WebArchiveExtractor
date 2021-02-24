@@ -276,7 +276,7 @@ namespace WebArchiveExtractor
             if (data != null && uri != null && uri.LocalPath.StartsWith("/"))
             {
                 var fileRelativeUri = uri.LocalPath.Replace(mainUri.AbsolutePath, string.Empty).TrimStart('/');
-                var path = Path.Combine(outputFolder, fileRelativeUri);
+                var path = Path.Combine(outputFolder, FileManager.RemoveInvalidFileNameChars(fileRelativeUri));
                 var fileInfo = new FileInfo(path);
 
                 if (fileInfo.Exists || File.Exists(fileInfo.DirectoryName) || Directory.Exists(fileInfo.FullName))

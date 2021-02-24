@@ -11,7 +11,7 @@ namespace TestTool
 
             using (var stream = Console.OpenStandardOutput())
             {
-                extractor.Extract("d:\\test.webarchive", "d:\\test", Extractor.ExtractorOptions.IgnoreJavaScriptFiles, stream);
+                extractor.Extract("d:\\E-mail - CentraalBeheer VvE.webarchive", "d:\\test", Extractor.ExtractorOptions.IgnoreJavaScriptFiles, stream);
             }
         }
     }
