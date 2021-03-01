@@ -12,7 +12,7 @@ This is a tool to extract the content of an Safari web archive, it is no guarant
 
 ## License Information
 
-WebArchiveReader is Copyright (C)2020 Kees van Spelde and is licensed under the MIT license:
+WebArchiveReader is Copyright (C)2020 - 2021 Kees van Spelde and is licensed under the MIT license:
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
